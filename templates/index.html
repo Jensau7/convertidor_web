@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Convertidor Exprés Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-900 text-white min-h-screen flex flex-col items-center justify-center p-4">
+    <div class="max-w-xl w-full bg-slate-800 p-8 rounded-2xl shadow-2xl border border-slate-700">
+        <h1 class="text-3xl font-bold text-center mb-2 text-blue-400">Convertidor Exprés Pro</h1>
+        <p class="text-slate-400 text-center mb-6">Convierte tus archivos a PDF de forma rápida y segura.</p>
+        
+        {% if bloqueado %}
+        <!-- Mensaje de límite alcanzado y botón de pago -->
+        <div class="bg-amber-500/10 border border-amber-500/30 rounded-xl p-6 text-center space-y-4">
+            <div class="inline-flex p-3 bg-amber-500/20 rounded-full text-amber-400 mb-1">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+            </div>
+            <h2 class="text-xl font-bold text-amber-300">Has alcanzado el límite de prueba gratuita</h2>
+            <p class="text-sm text-slate-300">Ya realizaste tu conversión gratuita de prueba. Desbloquea <strong class="text-white font-semibold">conversiones ilimitadas</strong> para seguir convirtiendo sin restricciones.</p>
+            
+            <a href="https://www.paypal.com" target="_blank" class="inline-block w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-3 px-6 rounded-xl shadow-lg transition">
+                Desbloquear acceso ilimitado con PayPal
+            </a>
+        </div>
+        {% else %}
+        <!-- Zona de carga de archivos -->
+        <form action="/" method="POST" enctype="multipart/form-data" class="space-y-4">
+            <div class="border-2 border-dashed border-slate-600 rounded-xl p-6 text-center hover:border-blue-500 transition">
+                <input type="file" name="file" id="file" class="hidden" required onchange="this.form.submit()">
+                <label for="file" class="cursor-pointer flex flex-col items-center">
+                    <svg class="w-12 h-12 text-blue-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+                    <span class="font-medium text-slate-200">Haz clic aquí para seleccionar tu archivo</span>
+                    <span class="text-sm text-slate-500 mt-1">Soporta JPG, PNG, WEBP, XLSX, TXT (1 conversión gratis)</span>
+                </label>
+            </div>
+        </form>
+        {% endif %}
+    </div>
+</body>
+</html>
