@@ -1,95 +1,107 @@
 import os
-from flask import Flask, render_template, request, send_file, redirect, url_for, session
-from PIL import Image
-import openpyxl
-from reportlab.lib.pagesizes import letter
-from reportlab.pdfgen import canvas
+from flask import Flask, request, render_template, send_file, after_this_request, jsonify, redirect, url_for
 
 app = Flask(__name__)
-app.secret_key = 'clave_secreta_super_segura_convertidor'
-app.config['UPLOAD_FOLDER'] = 'uploads'
-os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
-def convertir_imagen_a_pdf(input_path, output_pdf):
-    img = Image.open(input_path)
-    if img.mode != "RGB":
-        img = img.convert("RGB")
-    img.save(output_pdf, "PDF", resolution=100.0)
+# Configuración de carpetas y límites
+UPLOAD_FOLDER = 'uploads'
+CONVERTED_FOLDER = 'converted'
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+app.config['CONVERTED_FOLDER'] = CONVERTED_FOLDER
 
-def convertir_xlsx_a_pdf(input_path, output_pdf):
-    wb = openpyxl.load_workbook(input_path)
-    sheet = wb.active
-    c = canvas.Canvas(output_pdf, pagesize=letter)
-    width, height = letter
-    y = height - 50
-    c.drawString(50, y, f"--- Hoja: {sheet.title} ---")
-    y -= 25
-    for row in sheet.iter_rows(values_only=True):
-        fila_texto = " | ".join([str(val) for val in row if val is not None])
-        if fila_texto.strip():
-            if y < 50:
-                c.showPage()
-                y = height - 50
-            c.drawString(50, y, fila_texto[:90])
-            y -= 15
-    c.save()
+# Límite máximo para subidas gratuitas de archivos estándar (16 MB)
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 
-def convertir_txt_a_pdf(input_path, output_pdf):
-    c = canvas.Canvas(output_pdf, pagesize=letter)
-    width, height = letter
-    y = height - 50
-    with open(input_path, "r", encoding="utf-8", errors="ignore") as f:
-        for line in f:
-            linea = line.strip()
-            if linea:
-                if y < 50:
-                    c.showPage()
-                    y = height - 50
-                c.drawString(50, y, linea[:85])
-                y -= 15
-    c.save()
+# Configuración de tarifa para libros o documentos pesados
+PRECIO_PESADO_MXN = "20.00"
+MONEDA_MXN = "MXN"
 
-@app.route('/', methods=['GET', 'POST'])
+# Crear directorios si no existen
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+os.makedirs(CONVERTED_FOLDER, exist_ok=True)
+
+
+@app.route('/')
 def index():
-    if 'usos_gratis' not in session:
-        session['usos_gratis'] = 0
-        
-    es_vip = session.get('es_vip', False)
+    return render_template('index.html')
 
-    if request.method == 'POST':
-        if session['usos_gratis'] >= 1 and not es_vip:
-            return render_template('index.html', bloqueado=True, usos=session['usos_gratis'])
 
-        if 'file' not in request.files:
-            return redirect(request.url)
-        file = request.files['file']
-        if file.filename == '':
-            return redirect(request.url)
-        
-        if file:
-            filename = file.filename
-            input_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-            file.save(input_path)
-            
-            output_pdf_name = f"Convertido_{os.path.splitext(filename)[0]}.pdf"
-            output_path = os.path.join(app.config['UPLOAD_FOLDER'], output_pdf_name)
-            
-            ext = filename.lower()
-            if ext.endswith(('.jpg', '.jpeg', '.png', '.webp')):
-                convertir_imagen_a_pdf(input_path, output_path)
-            elif ext.endswith('.xlsx'):
-                convertir_xlsx_a_pdf(input_path, output_path)
-            elif ext.endswith('.txt'):
-                convertir_txt_a_pdf(input_path, output_path)
-            else:
-                return "Formato no soportado", 400
+@app.route('/convert', methods=['POST'])
+def convert_file():
+    if 'file' not in request.files:
+        return jsonify({'error': 'No se seleccionó ningún archivo'}), 400
 
-            if not es_vip:
-                session['usos_gratis'] += 1
-                
-            return send_file(output_path, as_attachment=True)
-            
-    return render_template('index.html', bloqueado=(session['usos_gratis'] >= 1 and not es_vip), usos=session['usos_gratis'])
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'error': 'Archivo no válido'}), 400
+
+    filename = file.filename
+    input_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+    file.save(input_path)
+
+    # Simulación/Lógica de conversión
+    # (Sustituye esta lógica por la función de librería que uses en tu proyecto)
+    output_filename = f"convertido_{os.path.splitext(filename)[0]}.pdf"
+    output_path = os.path.join(app.config['CONVERTED_FOLDER'], output_filename)
+
+    try:
+        # Aquí va la conversión a PDF...
+        with open(output_path, 'wb') as f_out:
+            with open(input_path, 'rb') as f_in:
+                f_out.write(f_in.read())
+    finally:
+        # Borrado inmediato del archivo origen para liberar RAM/Disco
+        if os.path.exists(input_path):
+            os.remove(input_path)
+
+    return jsonify({'download_url': url_for('download_file', filename=output_filename)})
+
+
+@app.route('/download/<filename>')
+def download_file(filename):
+    file_path = os.path.join(app.config['CONVERTED_FOLDER'], filename)
+
+    # Limpieza automática de la memoria/disco inmediatamente tras entregar la descarga
+    @after_this_request
+    def remove_file(response):
+        try:
+            if os.path.exists(file_path):
+                os.remove(file_path)
+                print(f"[Auto-Limpieza] Memoria liberada con éxito: {filename}")
+        except Exception as e:
+            print(f"[Error Auto-Limpieza] No se pudo borrar {filename}: {e}")
+        return response
+
+    return send_file(file_path, as_attachment=True)
+
+
+# Manejo de error cuando el archivo excede los 16 MB
+@app.errorhandler(413)
+def request_entity_too_large(error):
+    return jsonify({
+        'error': 'archivo_pesado',
+        'mensaje': 'Tu archivo supera los 16 MB (libro o documento grande). Requiere procesamiento especial.',
+        'precio': PRECIO_PESADO_MXN,
+        'moneda': MONEDA_MXN
+    }), 413
+
+
+# Creación de orden PayPal para archivos pesados ($20.00 MXN)
+@app.route('/create-paypal-order', methods=['POST'])
+def create_paypal_order():
+    order_data = {
+        "intent": "CAPTURE",
+        "purchase_units": [{
+            "amount": {
+                "currency_code": MONEDA_MXN,
+                "value": PRECIO_PESADO_MXN
+            },
+            "description": "Conversión de libro / archivo pesado a PDF (>16MB)"
+        }]
+    }
+    # Retorna la configuración lista para ser leída por la API JavaScript de PayPal
+    return jsonify(order_data)
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
