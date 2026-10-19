@@ -11,7 +11,7 @@ CONVERTED_FOLDER = 'converted'
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['CONVERTED_FOLDER'] = CONVERTED_FOLDER
 
-# Límite para subida estándar: 16 MB
+# Límite de subida: 16 MB
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -86,7 +86,6 @@ def convert_file():
     try:
         ext = os.path.splitext(filename)[1].lower()
 
-        # Conversión legítima de imágenes a PDF usando Pillow
         if ext in ['.jpg', '.jpeg', '.png', '.webp', '.bmp']:
             image = Image.open(input_path)
             if image.mode != 'RGB':
@@ -147,8 +146,7 @@ def create_paypal_order():
 
     precio, desc = precios.get(plan_type, ('2.00', '1 Conversión Individual'))
 
-    order_data = {
-        "intent": "CAPTURE",
+    return jsonify({
         "purchase_units": [{
             "amount": {
                 "currency_code": "MXN",
@@ -156,8 +154,7 @@ def create_paypal_order():
             },
             "description": desc
         }]
-    }
-    return jsonify(order_data)
+    })
 
 
 @app.route('/capture-paypal-order', methods=['POST'])
@@ -174,6 +171,8 @@ def capture_paypal_order():
     elif plan_type == 'platinum':
         exp_date = datetime.utcnow() + timedelta(days=30)
         session['platinum_until'] = exp_date.isoformat()
+    elif plan_type == 'heavy':
+        session['credits'] = session.get('credits', 0) + 1
 
     return jsonify({'status': 'success', 'credits': session.get('credits', 0), 'is_platinum': is_platinum_active()})
 
