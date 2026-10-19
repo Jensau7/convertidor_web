@@ -41,6 +41,13 @@
             padding: 8px 12px;
             border-radius: 20px;
         }
+        .alert-large {
+            font-size: 1.25rem;
+            font-weight: 700;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
     </style>
 </head>
 <body>
@@ -89,8 +96,8 @@
                         </div>
                     </form>
                     
-                    <!-- Mensaje de Estado / Alerta -->
-                    <div id="statusAlert" class="alert mt-3 d-none text-center" role="alert"></div>
+                    <!-- Alerta de Letras Grandes -->
+                    <div id="statusAlert" class="alert alert-large mt-4 d-none text-center" role="alert"></div>
                 </div>
             </div>
         </div>
@@ -222,7 +229,7 @@
 
         function showAlert(message, type) {
             const alertBox = document.getElementById('statusAlert');
-            alertBox.className = `alert alert-${type} mt-3 text-center`;
+            alertBox.className = `alert alert-${type} alert-large mt-4 text-center`;
             alertBox.innerText = message;
             alertBox.classList.remove('d-none');
         }

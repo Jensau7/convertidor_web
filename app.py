@@ -127,7 +127,7 @@ def download_file(filename):
 def request_entity_too_large(error):
     return jsonify({
         'error': 'archivo_pesado',
-        'mensaje': 'Tu archivo supera los 16 MB (libro o documento grande). Se requiere un pago de $20 MXN para procesarlo.',
+        'mensaje': 'Tu archivo supera los 16 MB. Se requiere un pago de $20 MXN para procesarlo.',
         'precio': '20.00',
         'moneda': 'MXN'
     }), 413
