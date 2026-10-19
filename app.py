@@ -90,7 +90,8 @@ def convert_file():
         if os.path.exists(input_path):
             os.remove(input_path)
 
-    return jsonify({'download_url': url_for('download_file', filename=output_filename)})
+    # Redirecciona directamente a la descarga en lugar de enviar JSON raw
+    return redirect(url_for('download_file', filename=output_filename))
 
 
 @app.route('/download/<filename>')
