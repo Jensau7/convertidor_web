@@ -98,6 +98,17 @@
             </div>
         </div>
 
+        <!-- Alerta de Éxito al Retornar de Pago -->
+        {% if pago_exitoso %}
+        <div class="row justify-content-center mb-4">
+            <div class="col-md-8">
+                <div class="alert alert-success alert-large text-center" role="alert">
+                    🎉 ¡Pago acreditado con éxito! Tus créditos o membresía ya están activos. ¡Puedes convertir tu archivo ahora mismo!
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
         <!-- Caja de Conversión -->
         <div class="row justify-content-center mb-5">
             <div class="col-md-8">

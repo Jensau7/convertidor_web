@@ -38,12 +38,14 @@ def is_platinum_active():
 @app.route('/')
 def index():
     init_user_session()
+    pago_exitoso = session.pop('pago_exitoso', False)
     return render_template(
         'index.html',
         free_trial_available=not session['free_trial_used'],
         credits=session.get('credits', 0),
         is_platinum=is_platinum_active(),
-        platinum_until=session.get('platinum_until')
+        platinum_until=session.get('platinum_until'),
+        pago_exitoso=pago_exitoso
     )
 
 
@@ -142,6 +144,7 @@ def activar_plan(plan_type):
     elif plan_type == 'heavy':
         session['credits'] = session.get('credits', 0) + 1
 
+    session['pago_exitoso'] = True
     return redirect(url_for('index'))
 
 
