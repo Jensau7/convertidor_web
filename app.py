@@ -1,6 +1,7 @@
 import os
 from datetime import datetime, timedelta
 from flask import Flask, request, render_template, send_file, after_this_request, jsonify, session, redirect, url_for
+from PIL import Image
 
 app = Flask(__name__)
 app.secret_key = 'convertidor_expres_pro_secret_key_noe'
@@ -83,14 +84,25 @@ def convert_file():
     output_path = os.path.join(app.config['CONVERTED_FOLDER'], output_filename)
 
     try:
-        with open(output_path, 'wb') as f_out:
-            with open(input_path, 'rb') as f_in:
-                f_out.write(f_in.read())
+        ext = os.path.splitext(filename)[1].lower()
+
+        # Conversión legítima de imágenes a PDF usando Pillow
+        if ext in ['.jpg', '.jpeg', '.png', '.webp', '.bmp']:
+            image = Image.open(input_path)
+            if image.mode != 'RGB':
+                image = image.convert('RGB')
+            image.save(output_path, "PDF", resolution=100.0)
+        else:
+            with open(output_path, 'wb') as f_out:
+                with open(input_path, 'rb') as f_in:
+                    f_out.write(f_in.read())
+    except Exception as e:
+        print(f"[Error de Conversión]: {e}")
+        return jsonify({'error': 'No se pudo procesar el archivo'}), 500
     finally:
         if os.path.exists(input_path):
             os.remove(input_path)
 
-    # Redirecciona directamente a la descarga en lugar de enviar JSON raw
     return redirect(url_for('download_file', filename=output_filename))
 
 
