@@ -7,22 +7,54 @@
     <meta name="description" content="Convierte tus documentos y libros a PDF al instante. Prueba gratis disponible, conversiones individuales desde $2 MXN, paquetes desde $10 MXN, archivos pesados por $20 MXN y Membresía Platinum ilimitada por $100 MXN/mes.">
     <!-- SDK de PayPal en Pesos Mexicanos (MXN) -->
     <script src="https://www.paypal.com/sdk/js?client-id=TU_CLIENT_ID_PAYPAL&currency=MXN"></script>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333; line-height: 1.5; }
+        h1 { color: #0d6efd; text-align: center; }
+        .card { border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .btn-submit { background-color: #0d6efd; color: white; border: none; padding: 12px 20px; width: 100%; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; }
+        .btn-submit:hover { background-color: #0b5ed7; }
+        label { font-weight: bold; display: block; margin-top: 10px; margin-bottom: 5px; }
+        input[type="file"], select { width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; }
+        .status-bar { background-color: #e7f1ff; padding: 12px; border-radius: 6px; text-align: center; font-size: 15px; margin-bottom: 20px; }
+    </style>
 </head>
 <body>
+
     <h1>Convertidor Exprés Pro</h1>
 
-    <div id="user-status">
+    <!-- Estado del usuario (Prueba gratis / Créditos / Membresía) -->
+    <div id="user-status" class="status-bar">
         {% if is_platinum %}
-            <p><strong>Estado:</strong> Membresía Platinum Activa 👑 (Vence: {{ platinum_until }})</p>
+            <p style="margin:0;"><strong>Estado:</strong> Membresía Platinum Activa 👑 (Vence: {{ platinum_until }})</p>
         {% elif free_trial_available %}
-            <p><strong>Estado:</strong> Tienes 1 prueba gratuita disponible 🎉</p>
+            <p style="margin:0;"><strong>Estado:</strong> Tienes 1 prueba gratuita disponible 🎉</p>
         {% else %}
-            <p><strong>Créditos disponibles:</strong> {{ credits }} conversiones</p>
+            <p style="margin:0;"><strong>Créditos disponibles:</strong> {{ credits }} conversiones</p>
         {% endif %}
     </div>
 
-    <div id="pricing-plans" style="border:1px solid #ccc; padding:15px; margin-top:20px;">
-        <h3>Planes y Opciones de Pago (MXN)</h3>
+    <!-- FORMULARIO PRINCIPAL DE CONVERSIÓN -->
+    <div class="card">
+        <h3>Subir y Convertir Archivo</h3>
+        <form action="/convert" method="POST" enctype="multipart/form-data">
+            <label for="file">Selecciona tu archivo:</label>
+            <input type="file" name="file" id="file" required>
+
+            <label for="format">Convertir a:</label>
+            <select name="format" id="format">
+                <option value="pdf">PDF (.pdf)</option>
+                <option value="docx">Word (.docx)</option>
+                <option value="txt">Texto (.txt)</option>
+                <option value="png">Imagen (.png)</option>
+            </select>
+
+            <button type="submit" class="btn-submit">⚡ Convertir Ahora</button>
+        </form>
+    </div>
+
+    <!-- PLANES Y OPCIONES DE PAGO -->
+    <div id="pricing-plans" class="card">
+        <h3 style="margin-top:0;">Planes y Opciones de Pago (MXN)</h3>
         <ul>
             <li><strong>1 Conversión Individual:</strong> $2 MXN</li>
             <li><strong>Paquete 10 Conversiones:</strong> $10 MXN</li>
@@ -31,5 +63,6 @@
         </ul>
         <div id="paypal-button-container"></div>
     </div>
+
 </body>
 </html>
