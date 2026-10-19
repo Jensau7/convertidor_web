@@ -1,6 +1,6 @@
 import os
 from datetime import datetime, timedelta
-from flask import Flask, request, render_template, send_file, after_this_request, jsonify, session, redirect, url_for
+from flask import Flask, request, render_template, send_file, jsonify, session, redirect, url_for
 from PIL import Image
 
 app = Flask(__name__)
@@ -27,10 +27,13 @@ def init_user_session():
 
 def is_platinum_active():
     if session.get('platinum_until'):
-        exp_date = datetime.fromisoformat(session['platinum_until'])
-        if datetime.utcnow() < exp_date:
-            return True
-        else:
+        try:
+            exp_date = datetime.fromisoformat(session['platinum_until'])
+            if datetime.utcnow() < exp_date:
+                return True
+            else:
+                session['platinum_until'] = None
+        except Exception:
             session['platinum_until'] = None
     return False
 
@@ -60,16 +63,13 @@ def convert_file():
     if file.filename == '':
         return jsonify({'error': 'Archivo no válido'}), 400
 
-    has_permission = False
-
+    # Verificación de permisos/pago
     if is_platinum_active():
-        has_permission = True
+        pass
     elif not session['free_trial_used']:
         session['free_trial_used'] = True
-        has_permission = True
     elif session.get('credits', 0) > 0:
         session['credits'] -= 1
-        has_permission = True
     else:
         return jsonify({
             'error': 'payment_required',
@@ -80,46 +80,42 @@ def convert_file():
     input_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
     file.save(input_path)
 
-    output_filename = f"convertido_{os.path.splitext(filename)[0]}.pdf"
+    base_name = os.path.splitext(filename)[0]
+    output_filename = f"convertido_{base_name}.pdf"
     output_path = os.path.join(app.config['CONVERTED_FOLDER'], output_filename)
 
     try:
         ext = os.path.splitext(filename)[1].lower()
 
         if ext in ['.jpg', '.jpeg', '.png', '.webp', '.bmp']:
-            image = Image.open(input_path)
-            if image.mode != 'RGB':
-                image = image.convert('RGB')
-            image.save(output_path, "PDF", resolution=100.0)
+            with Image.open(input_path) as img:
+                # Asegurar formato RGB para evitar inconsistencias de color/transparencia
+                if img.mode != 'RGB':
+                    img = img.convert('RGB')
+                img.save(output_path, "PDF", resolution=100.0)
         else:
-            with open(output_path, 'wb') as f_out:
-                with open(input_path, 'rb') as f_in:
-                    f_out.write(f_in.read())
+            # Si ya es un archivo compatible, guardar directamente
+            file.seek(0)
+            file.save(output_path)
+
+        # Enviar archivo de forma segura con headers correctos de PDF
+        return send_file(
+            output_path,
+            as_attachment=True,
+            download_name=output_filename,
+            mimetype='application/pdf'
+        )
+
     except Exception as e:
         print(f"[Error de Conversión]: {e}")
         return jsonify({'error': 'No se pudo procesar el archivo'}), 500
     finally:
+        # Limpieza del archivo de entrada original
         if os.path.exists(input_path):
-            os.remove(input_path)
-
-    return redirect(url_for('download_file', filename=output_filename))
-
-
-@app.route('/download/<filename>')
-def download_file(filename):
-    file_path = os.path.join(app.config['CONVERTED_FOLDER'], filename)
-
-    @after_this_request
-    def remove_file(response):
-        try:
-            if os.path.exists(file_path):
-                os.remove(file_path)
-                print(f"[Auto-Limpieza] Memoria liberada: {filename}")
-        except Exception as e:
-            print(f"[Error Auto-Limpieza] No se pudo borrar {filename}: {e}")
-        return response
-
-    return send_file(file_path, as_attachment=True)
+            try:
+                os.remove(input_path)
+            except Exception:
+                pass
 
 
 @app.errorhandler(413)
