@@ -1,6 +1,6 @@
 import os
 from datetime import datetime, timedelta
-from flask import Flask, request, render_template, send_file, jsonify, session, redirect, url_for
+from flask import Flask, request, render_template, send_file, jsonify, session, redirect, url_for, make_response
 from PIL import Image
 
 app = Flask(__name__)
@@ -63,7 +63,7 @@ def convert_file():
     if file.filename == '':
         return jsonify({'error': 'Archivo no válido'}), 400
 
-    # Verificación de permisos/pago
+    # Verificación de permisos y créditos
     if is_platinum_active():
         pass
     elif not session['free_trial_used']:
@@ -89,33 +89,58 @@ def convert_file():
 
         if ext in ['.jpg', '.jpeg', '.png', '.webp', '.bmp']:
             with Image.open(input_path) as img:
-                # Asegurar formato RGB para evitar inconsistencias de color/transparencia
                 if img.mode != 'RGB':
                     img = img.convert('RGB')
                 img.save(output_path, "PDF", resolution=100.0)
         else:
-            # Si ya es un archivo compatible, guardar directamente
             file.seek(0)
             file.save(output_path)
 
-        # Enviar archivo de forma segura con headers correctos de PDF
-        return send_file(
+        # Prepara la respuesta con el PDF y la cookie de confirmación de descarga
+        response = make_response(send_file(
             output_path,
             as_attachment=True,
             download_name=output_filename,
             mimetype='application/pdf'
-        )
+        ))
+        
+        # Setea cookie 'download_complete' para que JS sepa que ya se entregó
+        response.set_cookie('download_complete', output_filename, max_age=60)
+        return response
 
     except Exception as e:
         print(f"[Error de Conversión]: {e}")
         return jsonify({'error': 'No se pudo procesar el archivo'}), 500
     finally:
-        # Limpieza del archivo de entrada original
+        # El archivo de imagen subido originalmente se elimina inmediatamente
         if os.path.exists(input_path):
             try:
                 os.remove(input_path)
             except Exception:
                 pass
+
+
+@app.route('/confirm-download-complete', methods=['POST'])
+def confirm_download_complete():
+    """Ruta invocada por el navegador en cuanto termina la descarga física del PDF"""
+    data = request.get_json() or {}
+    filename = data.get('filename')
+
+    if filename:
+        # Prevenir path traversal por seguridad
+        safe_filename = os.path.basename(filename)
+        file_path = os.path.join(app.config['CONVERTED_FOLDER'], safe_filename)
+
+        if os.path.exists(file_path):
+            try:
+                os.remove(file_path)
+                print(f"[Auto-Limpieza Inmediata] PDF borrado tras confirmación de descarga: {safe_filename}")
+                return jsonify({'status': 'deleted', 'file': safe_filename}), 200
+            except Exception as e:
+                print(f"[Error de Borrado]: {e}")
+                return jsonify({'error': str(e)}), 500
+
+    return jsonify({'status': 'file_not_found'}), 404
 
 
 @app.errorhandler(413)

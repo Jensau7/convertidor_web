@@ -225,6 +225,9 @@
             btn.disabled = true;
             hideAlert();
 
+            // Limpia cualquier cookie previa de confirmación
+            document.cookie = "download_complete=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+
             try {
                 const response = await fetch('/convert', {
                     method: 'POST',
@@ -256,12 +259,27 @@
                     a.href = url;
                     
                     const originalName = fileInput.files[0].name.split('.')[0];
-                    a.download = `convertido_${originalName}.pdf`;
+                    const downloadedFilename = `convertido_${originalName}.pdf`;
+                    a.download = downloadedFilename;
                     
                     document.body.appendChild(a);
                     a.click();
                     a.remove();
                     window.URL.revokeObjectURL(url);
+
+                    // Monitoreo de recepción completa para borrado inmediato en el servidor
+                    let checkDownloadInterval = setInterval(() => {
+                        if (document.cookie.indexOf('download_complete=') !== -1) {
+                            clearInterval(checkDownloadInterval);
+
+                            // Notifica al backend para la destrucción inmediata del PDF
+                            fetch('/confirm-download-complete', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ filename: downloadedFilename })
+                            });
+                        }
+                    }, 500);
 
                     showAlert("✅ ¡Archivo convertido y descargado con éxito!", "success");
                     btn.innerHTML = "✅ ¡Listo!";
@@ -295,3 +313,4 @@
     </script>
 </body>
 </html>
+
