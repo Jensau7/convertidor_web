@@ -10,8 +10,6 @@ UPLOAD_FOLDER = 'uploads'
 CONVERTED_FOLDER = 'converted'
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['CONVERTED_FOLDER'] = CONVERTED_FOLDER
-
-# Límite de subida: 16 MB
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -126,42 +124,12 @@ def download_file(filename):
 def request_entity_too_large(error):
     return jsonify({
         'error': 'archivo_pesado',
-        'mensaje': 'Tu archivo supera los 16 MB. Se requiere un pago de $20 MXN para procesarlo.',
-        'precio': '20.00',
-        'moneda': 'MXN'
+        'mensaje': 'Tu archivo supera los 16 MB. Se requiere un pago de $20 MXN para procesarlo.'
     }), 413
 
 
-@app.route('/create-paypal-order', methods=['POST'])
-def create_paypal_order():
-    data = request.get_json() or {}
-    plan_type = data.get('plan', 'single')
-
-    precios = {
-        'single': ('2.00', '1 Conversión Individual (<16MB)'),
-        'pack': ('10.00', 'Paquete de 10 Conversiones (<16MB)'),
-        'platinum': ('100.00', 'Membresía Platinum - 1 Mes Ilimitado'),
-        'heavy': ('20.00', 'Conversión de Libro / Archivo Pesado (>16MB)')
-    }
-
-    precio, desc = precios.get(plan_type, ('2.00', '1 Conversión Individual'))
-
-    return jsonify({
-        "purchase_units": [{
-            "amount": {
-                "currency_code": "MXN",
-                "value": precio
-            },
-            "description": desc
-        }]
-    })
-
-
-@app.route('/capture-paypal-order', methods=['POST'])
-def capture_paypal_order():
-    data = request.get_json() or {}
-    plan_type = data.get('plan')
-
+@app.route('/activar-plan/<plan_type>')
+def activar_plan(plan_type):
     init_user_session()
 
     if plan_type == 'single':
@@ -174,7 +142,7 @@ def capture_paypal_order():
     elif plan_type == 'heavy':
         session['credits'] = session.get('credits', 0) + 1
 
-    return jsonify({'status': 'success', 'credits': session.get('credits', 0), 'is_platinum': is_platinum_active()})
+    return redirect(url_for('index'))
 
 
 if __name__ == '__main__':
